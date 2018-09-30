@@ -30,8 +30,7 @@ class ViewController: UIViewController {
         
         // readiPhoneImageInfo()
         writeImageMetadate()
-        
-//        test()
+    
     }
     
     func readiPhoneImageInfo() {
@@ -42,7 +41,7 @@ class ViewController: UIViewController {
             if let imageSource = CGImageSourceCreateWithURL(fileUrl as CFURL, nil) {
                 // 利用imageSource获取全部ExifData
                 if let imageInfo = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [String: Any] {
-                     print(imageInfo)
+                    print(imageInfo)
                     // 从全部ExifData中取出EXIF文件
                     // print(imageInfo["{Exif}"] ?? "")
                 }
@@ -70,32 +69,17 @@ class ViewController: UIViewController {
     
     func writeImageMetadate() {
         
-        // 图片这样h转Data 会丢失源数据信息
-        if let imageData = UIImage(named: "testImage")?.pngData(), let cgImage = UIImage(named: "testImage")?.cgImage {
+        // 图片这样转Data 会丢失源数据信息
+        if let imageData = UIImage(named: "testImage")?.pngData() {
             if let source = CGImageSourceCreateWithData(imageData as CFData, nil) {
-                if let imageInfo = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) {
+                if let imageInfo = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any] {
                     // 获取源数据
-                    print(imageInfo)
-                    
-                    LALA().ads(imageInfo as! [AnyHashable : Any], image: UIImage(named: "testImage")!)
-                    var metaDataDic = NSMutableDictionary(dictionary: imageInfo)
-                    /*
-                    
-                    var exifDic = (metaDataDic.value(forKey: "{Exif}") as? NSMutableDictionary) ?? NSMutableDictionary()
-//                    var exifDic = metaDataDic["{Exif}"] as? [String: Any] ?? [String: Any]()
-//                    var GPSDic = metaDataDic["{GPS}"] as? [String: Any] ?? [String: Any]()
-                    // 修改exif数据
-                    exifDic[kCGImagePropertyExifExposureTime as String] = 0
-                    
-                    // 修改GPS数据
-//                    GPSDic[kCGImagePropertyGPSDateStamp as String] = "2012:10:18"
-//                    GPSDic[kCGImagePropertyGPSLatitude as String] = 116.29353
-//                    GPSDic[kCGImagePropertyGPSLatitudeRef as String] = "N"
-                    // 合成到 metaDataDic
-                    
-                    exifDic[kCGImagePropertyExifDictionary as String] = exifDic
-//                    metaDataDic[kCGImagePropertyGPSDictionary as String] = GPSDic
- */
+                    var metaDataDic = imageInfo
+                    var exifDic = metaDataDic["{Exif}"] as? [String: Any] ?? [String: Any]()
+                     // 修改exif数据
+                     exifDic[kCGImagePropertyExifExposureTime as String] = NSNumber(value: 0.5)
+                     metaDataDic[kCGImagePropertyExifDictionary as String] = exifDic
+                  
                     // 将修改后的文件写入至图片中
                     if let UTI = CGImageSourceGetType(source) {
                         let newImageData = NSMutableData()
@@ -105,17 +89,14 @@ class ViewController: UIViewController {
                                 // 查看修改后图片的Exif信息
                                 if let newImage = CIImage(data: newImageData as Data) {
                                     print(newImage.properties)
-                                    let image = UIImage(ciImage: newImage)
-//                                    saveImage(image: image)
-                                    
-                                    ALAssetsLibrary().writeImage(toSavedPhotosAlbum: cgImage, metadata: metaDataDic as! [AnyHashable : Any]) { (url, error) in
-                                        print(error)
-                                    }
                                 }
+                                // 保存修改源数据后的图片  至相册
+                                // self.saveImage(with: newImageData as Data)
                                 
                                 let path = NSHomeDirectory()
                                 print(path)
-                                newImageData.write(toFile: path + "/newImage.png", atomically: true)
+                                // 写到沙盒不保留源数据
+                                // newImageData.write(toFile: path + "/newImage.png", atomically: true)
                             }
                         }
                     }
@@ -126,77 +107,28 @@ class ViewController: UIViewController {
         
     }
     
-    func saveImage(image: UIImage) {
+    func saveImage(with metaData: Data) {
         PHPhotoLibrary.shared().performChanges({
-            PHAssetChangeRequest.creationRequestForAsset(from: image)
-//            let data = try! JSONSerialization.data(withJSONObject: imageWithMetaData, options: .prettyPrinted)
-//            let creationRequest = PHAssetCreationRequest.forAsset()
-//            creationRequest.addResource(with: .photo, data: data, options: nil)
-        
+            let creationRequest = PHAssetCreationRequest.forAsset()
+            creationRequest.addResource(with: .photo, data: metaData, options: nil)
         }) { (success, error) in
             print(error?.localizedDescription ?? "")
         }
     }
     
-    func test() {
-        
-        let image = UIImage(named: "IMG_4492.JPG")!
-        
-        let sourceOptions: [String: AnyObject] = [kCGImageSourceTypeIdentifierHint as String: kUTTypeJPEG as AnyObject]
-        let cfSourceOptions = sourceOptions as CFDictionary
-        
-        
-        let data = image.jpegData(compressionQuality: 1.0)
-        let source: CGImageSource = CGImageSourceCreateWithData(data as! CFData, cfSourceOptions)!
-        
-        let filepath = NSTemporaryDirectory().appending("out.jpg")
-        
-        print("Output file:")
-        print(filepath)
-        
-        let fileURL: URL = URL(fileURLWithPath: filepath)
-        
-        let destination: CGImageDestination = CGImageDestinationCreateWithURL(fileURL as CFURL, kUTTypeJPEG, 1, nil)!
-        
-        var makeTag = CGImageMetadataTagCreate(
-            kCGImageMetadataNamespaceTIFF, kCGImageMetadataPrefixTIFF, kCGImagePropertyTIFFMake, .string, "Make" as CFString
-            )!
-        
-        var modelTag = CGImageMetadataTagCreate(
-            kCGImageMetadataNamespaceTIFF, kCGImageMetadataPrefixTIFF, kCGImagePropertyTIFFModel, .string, "Model" as CFString
-            )!
-        
-        var metaDatas = CGImageMetadataCreateMutable()
-        
-        var tagPath = "tiff:Make" as CFString
-        var result = CGImageMetadataSetTagWithPath(metaDatas, nil, tagPath, makeTag)
-        
-        tagPath = "tiff:Model" as CFString
-        result = CGImageMetadataSetTagWithPath(metaDatas, nil, tagPath, modelTag)
-        
-        let destOptions: [String: AnyObject] = [
-            kCGImageDestinationMergeMetadata as String: NSNumber(value: 1),
-            kCGImageDestinationMetadata as String: metaDatas
-        ]
-        
-        let cfDestOptions = destOptions as CFDictionary
-        
-        var error = 0
-        var errorPtr: UnsafeMutablePointer<CFError>
-        
-        withUnsafeMutablePointer(to: &error, { ptr in
-            result = CGImageDestinationCopyImageSource(destination, source, cfDestOptions, nil)
-            print(String(format: "Write image to file result: %@", result ? "Success" : "Failed"))
-//            print(String(format: "With error: %@", error.debugDescription))
-        })
-        
-        let writeResult = CGImageDestinationFinalize(destination)
-        
-        // This is false, and you may see an error like:
-        // " ImageIO: finalize:2031: not allowed for image destination that was updated with CGImageDestinationCopyImageSource "
-        // But, in practice, it works. The file is there and the metadata is correct.
-        print(writeResult)
-    }
-
+    /*
+    关于无法修改Exif值的几点注意事项：
+    
+    1. 传入的数据格式与Exif规定的不符
+    
+    Exif的每条信息都有对应的数据类型，如：String Float... 如果数据类型传入错误将无法写入文件。
+    
+    2. 传入的字段超过规定字段长度
+    
+    3. 相互依赖的字段只添加了一个字段
+    
+    在GPS文件中经纬度的度数的字段与经纬度的方向的字段相互依赖，修改经／纬度数需要经／纬方向字段的存在，否则修改无效。
+    */
+    
 }
 
