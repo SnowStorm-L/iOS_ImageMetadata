@@ -10,6 +10,76 @@ import UIKit
 import Photos
 import MobileCoreServices
 
+enum ImageFormat {
+    case unknown
+    case jpeg
+    case jpeg2000
+    case tiff
+    case bmp
+    case ico
+    case icns
+    case gif
+    case png
+    case webp
+    case psd
+    case iff
+    case swf
+    case swc
+}
+
+struct ImageHeaderData{
+    static var BMP: [UInt8] = [0x42, 0x4D] // 'B', 'M'
+    static var GIF: [UInt8] = [0x47, 0x49, 0x46] // 'G', 'I', 'F'
+    static var SWF: [UInt8] = [0x46, 0x57, 0x53] // 'F', 'W', 'S'
+    static var SWC: [UInt8] = [0x43, 0x57, 0x53] // 'C', 'W', 'S'
+    static var JPG: [UInt8] = [0xff, 0xd8, 0xff]
+    static var PSD: [UInt8] = [0x38, 0x42, 0x50, 0x53] // '8', 'B', 'P', 'S'
+    static var IFF: [UInt8] = [0x46, 0x4F, 0x52, 0x4D] // 'F', 'O', 'R', 'M'
+    static var WEBP: [UInt8] = [0x52, 0x49, 0x46, 0x46] // 'R', 'I', 'F', 'F'
+    static var ICO: [UInt8] = [0x00, 0x00, 0x01, 0x00]
+    static var ICNS: [UInt8] = [0x49, 0x43, 0x4E, 0x53] // 'I', 'C', 'N', 'S'
+    static var TIFF_II: [UInt8] = [0x49, 0x49, 0x2A, 0x00] // 'I','I' 前2位
+    static var TIFF_MM: [UInt8] = [0x4D, 0x4D, 0x00, 0x2A] // 'M','M' 前2位
+    static var PNG: [UInt8] = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+    static var JP2: [UInt8] = [0x00, 0x00, 0x00, 0x0c, 0x6a, 0x50, 0x20, 0x20, 0x0d, 0x0a, 0x87, 0x0a]
+}
+
+extension Data {
+    
+    var imageFormat: ImageFormat{
+        var buffer = [UInt8](repeating: 0, count: 12)
+        copyBytes(to: &buffer, count: 12)
+        if memcmp(buffer, ImageHeaderData.BMP, 2) == 0 { // image/x-ms-bmp (bmp)
+            return .bmp
+        } else if memcmp(buffer, ImageHeaderData.GIF, 3) == 0 { // image/gif (gif)
+            return .gif
+        } else if memcmp(buffer, ImageHeaderData.SWF, 3) == 0 {
+            return .swf
+        } else if memcmp(buffer, ImageHeaderData.SWC, 3) == 0 {
+            return .swc
+        } else if memcmp(buffer, ImageHeaderData.JPG, 3) == 0 { // image/jpeg (jpg, jpeg)
+            return .jpeg
+        } else if memcmp(buffer, ImageHeaderData.PSD, 4) == 0 { // image/psd (psd)
+            return .psd
+        } else if memcmp(buffer, ImageHeaderData.IFF, 4) == 0 { // image/iff (iff)
+            return .iff
+        } else if memcmp(buffer, ImageHeaderData.WEBP, 4) == 0 { // image/webp (webp)
+            return .webp
+        } else if memcmp(buffer, ImageHeaderData.ICO, 4) == 0 { // image/vnd.microsoft.icon (ico)
+            return .ico
+        } else if memcmp(buffer, ImageHeaderData.TIFF_II, 4) == 0 || memcmp(buffer, ImageHeaderData.TIFF_MM, 4) == 0 { // image/tiff (tif, tiff)
+            return .tiff
+        } else if memcmp(buffer, ImageHeaderData.PNG, 8) == 0 { // image/png (png)
+            return .png
+        } else if memcmp(buffer, ImageHeaderData.JP2, 12) == 0 { // image/jp2 (JPEG 2000)
+            return .jpeg2000
+        } else{
+            return .unknown
+        }
+    }
+    
+}
+
 class ViewController: UIViewController {
     
     // 参考链接
@@ -113,6 +183,28 @@ class ViewController: UIViewController {
         
     }
     
+    /*
+     关于无法修改Exif值的几点注意事项：
+     
+     1. 传入的数据格式与Exif规定的不符
+     
+     Exif的每条信息都有对应的数据类型，如：String Float... 如果数据类型传入错误将无法写入文件。
+     
+     2. 传入的字段超过规定字段长度
+     
+     3. 相互依赖的字段只添加了一个字段
+     
+     在GPS文件中经纬度的度数的字段与经纬度的方向的字段相互依赖，修改经／纬度数需要经／纬方向字段的存在，否则修改无效。
+     */
+    
+    
+    
+}
+
+
+// MARK: - Util
+extension ViewController {
+    
     func saveImage(with metaData: Data) {
         PHPhotoLibrary.shared().performChanges({
             let creationRequest = PHAssetCreationRequest.forAsset()
@@ -158,19 +250,4 @@ class ViewController: UIViewController {
         return nil
     }
     
-    /*
-     关于无法修改Exif值的几点注意事项：
-     
-     1. 传入的数据格式与Exif规定的不符
-     
-     Exif的每条信息都有对应的数据类型，如：String Float... 如果数据类型传入错误将无法写入文件。
-     
-     2. 传入的字段超过规定字段长度
-     
-     3. 相互依赖的字段只添加了一个字段
-     
-     在GPS文件中经纬度的度数的字段与经纬度的方向的字段相互依赖，修改经／纬度数需要经／纬方向字段的存在，否则修改无效。
-     */
-    
 }
-

@@ -14,7 +14,6 @@
 		0BE3CEAE215DC2CA0069FEC7 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 0BE3CEAC215DC2CA0069FEC7 /* LaunchScreen.storyboard */; };
 		0BE3CEB6215DC2D60069FEC7 /* IMG_4492.JPG in Resources */ = {isa = PBXBuildFile; fileRef = 0BE3CEB5215DC2D60069FEC7 /* IMG_4492.JPG */; };
 		0BE3CEB8215DD02B0069FEC7 /* testImage.png in Resources */ = {isa = PBXBuildFile; fileRef = 0BE3CEB7215DD02B0069FEC7 /* testImage.png */; };
-		0BE3CEBC215E10BB0069FEC7 /* LALA.m in Sources */ = {isa = PBXBuildFile; fileRef = 0BE3CEBB215E10BB0069FEC7 /* LALA.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,9 +26,6 @@
 		0BE3CEAF215DC2CA0069FEC7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0BE3CEB5215DC2D60069FEC7 /* IMG_4492.JPG */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = IMG_4492.JPG; sourceTree = "<group>"; };
 		0BE3CEB7215DD02B0069FEC7 /* testImage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = testImage.png; sourceTree = "<group>"; };
-		0BE3CEB9215E10BA0069FEC7 /* ImageMetadata-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ImageMetadata-Bridging-Header.h"; sourceTree = "<group>"; };
-		0BE3CEBA215E10BB0069FEC7 /* LALA.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LALA.h; sourceTree = "<group>"; };
-		0BE3CEBB215E10BB0069FEC7 /* LALA.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LALA.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,15 +60,12 @@
 			children = (
 				0BE3CEA3215DC2C90069FEC7 /* AppDelegate.swift */,
 				0BE3CEA5215DC2C90069FEC7 /* ViewController.swift */,
-				0BE3CEBA215E10BB0069FEC7 /* LALA.h */,
-				0BE3CEBB215E10BB0069FEC7 /* LALA.m */,
 				0BE3CEB7215DD02B0069FEC7 /* testImage.png */,
 				0BE3CEB5215DC2D60069FEC7 /* IMG_4492.JPG */,
 				0BE3CEA7215DC2C90069FEC7 /* Main.storyboard */,
 				0BE3CEAA215DC2CA0069FEC7 /* Assets.xcassets */,
 				0BE3CEAC215DC2CA0069FEC7 /* LaunchScreen.storyboard */,
 				0BE3CEAF215DC2CA0069FEC7 /* Info.plist */,
-				0BE3CEB9215E10BA0069FEC7 /* ImageMetadata-Bridging-Header.h */,
 			);
 			path = ImageMetadata;
 			sourceTree = "<group>";
@@ -152,7 +145,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				0BE3CEA6215DC2C90069FEC7 /* ViewController.swift in Sources */,
-				0BE3CEBC215E10BB0069FEC7 /* LALA.m in Sources */,
 				0BE3CEA4215DC2C90069FEC7 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -310,7 +302,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.bestidear.ImageMetadata;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OBJC_BRIDGING_HEADER = "ImageMetadata/ImageMetadata-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 4.2;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -332,7 +324,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.bestidear.ImageMetadata;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OBJC_BRIDGING_HEADER = "ImageMetadata/ImageMetadata-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_VERSION = 4.2;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
