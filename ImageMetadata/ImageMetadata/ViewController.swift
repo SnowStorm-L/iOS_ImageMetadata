@@ -27,6 +27,8 @@ enum ImageFormat {
     case swc
 }
 
+// 其实这个,选中工程的图片文件,右键Open As(选Hex), 查看不同文件16进制的构成
+// 就能知道不同格式的图片的构成了, 一般文件格式,都在Data的前几个字节中
 struct ImageHeaderData{
     static var BMP: [UInt8] = [0x42, 0x4D] // 'B', 'M'
     static var GIF: [UInt8] = [0x47, 0x49, 0x46] // 'G', 'I', 'F'
@@ -37,7 +39,7 @@ struct ImageHeaderData{
     static var IFF: [UInt8] = [0x46, 0x4F, 0x52, 0x4D] // 'F', 'O', 'R', 'M'
     static var WEBP: [UInt8] = [0x52, 0x49, 0x46, 0x46] // 'R', 'I', 'F', 'F'
     static var ICO: [UInt8] = [0x00, 0x00, 0x01, 0x00]
-    static var ICNS: [UInt8] = [0x49, 0x43, 0x4E, 0x53] // 'I', 'C', 'N', 'S'
+    static var ICNS: [UInt8] = [0x69, 0x63, 0x6E, 0x73] // 'i', 'c', 'n', 's'
     static var TIFF_II: [UInt8] = [0x49, 0x49, 0x2A, 0x00] // 'I','I' 前2位
     static var TIFF_MM: [UInt8] = [0x4D, 0x4D, 0x00, 0x2A] // 'M','M' 前2位
     static var PNG: [UInt8] = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
@@ -67,6 +69,8 @@ extension Data {
             return .webp
         } else if memcmp(buffer, ImageHeaderData.ICO, 4) == 0 { // image/vnd.microsoft.icon (ico)
             return .ico
+        } else if memcmp(buffer, ImageHeaderData.ICNS, 4) == 0 {
+            return .icns
         } else if memcmp(buffer, ImageHeaderData.TIFF_II, 4) == 0 || memcmp(buffer, ImageHeaderData.TIFF_MM, 4) == 0 { // image/tiff (tif, tiff)
             return .tiff
         } else if memcmp(buffer, ImageHeaderData.PNG, 8) == 0 { // image/png (png)
@@ -100,7 +104,7 @@ class ViewController: UIViewController {
         
         readImageMetadate()
         writeImageMetadate()
-        
+        imageFormatTest()
     }
     
     func readImageMetadate() {
@@ -197,7 +201,16 @@ class ViewController: UIViewController {
      在GPS文件中经纬度的度数的字段与经纬度的方向的字段相互依赖，修改经／纬度数需要经／纬方向字段的存在，否则修改无效。
      */
     
-    
+    func imageFormatTest() {
+        
+        for item in ["gif", "ico", "bmp", "webp", "jpg", "png", "psd", "icns", "svg"] {
+            if let filePath = Bundle.main.path(forResource: "test", ofType: item),
+                let imgData = try? Data(contentsOf: URL(fileURLWithPath: filePath)) {
+                print(imgData.imageFormat)
+            }
+        }
+        
+    }
     
 }
 
