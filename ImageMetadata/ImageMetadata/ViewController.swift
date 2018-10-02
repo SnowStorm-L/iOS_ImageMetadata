@@ -169,14 +169,20 @@ class ViewController: UIViewController {
                                 // 保存修改元数据后的图片  至相册
                                 // self.saveImage(with: newImageData as Data)
                                 
-                                // 传图片上服务器的时候别写入沙盒(这样会丢失元数据)
-                                // 直接传拼接了元数据的Data(newImageData)
-                                // URLSession.shared.uploadTask(with: URLRequest, from: newImageData)
-                                
+                                // 写入后查看元数据,真机测试(模拟器沙盒貌似不保留)
+                                // 真机开了iTunes共享,把沙盒文件复制到电脑,k打开后查看元数据已经被更改
                                 let path = NSHomeDirectory()
-                                print(path)
-                                // 写到沙盒不保留元数据
-                                // newImageData.write(toFile: path + "/newImage.png", atomically: true)
+                                let imagePath = path + "/Documents/newImage.png"
+                                print(imagePath)
+                                /* 写入方法1
+                                let fp = fopen(imagePath, "w+")
+                                let uint8 = [UInt8](newImageData as Data)
+                                fwrite(newImageData.bytes, uint8.count, 1, fp)
+                                fclose(fp)
+                                */
+                                
+                                // 写入方法2
+                                newImageData.write(toFile: imagePath, atomically: true)
                             }
                         }
                     }
