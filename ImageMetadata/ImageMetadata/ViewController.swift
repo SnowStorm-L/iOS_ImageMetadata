@@ -48,7 +48,7 @@ struct ImageHeaderData{
 
 extension Data {
     
-    var imageFormat: ImageFormat{
+    var imageFormat: ImageFormat {
         var buffer = [UInt8](repeating: 0, count: 12)
         copyBytes(to: &buffer, count: 12)
         if memcmp(buffer, ImageHeaderData.BMP, 2) == 0 { // image/x-ms-bmp (bmp)
@@ -71,7 +71,8 @@ extension Data {
             return .ico
         } else if memcmp(buffer, ImageHeaderData.ICNS, 4) == 0 {
             return .icns
-        } else if memcmp(buffer, ImageHeaderData.TIFF_II, 4) == 0 || memcmp(buffer, ImageHeaderData.TIFF_MM, 4) == 0 { // image/tiff (tif, tiff)
+        } else if memcmp(buffer, ImageHeaderData.TIFF_II, 4) == 0 ||
+            memcmp(buffer, ImageHeaderData.TIFF_MM, 4) == 0 { // image/tiff (tif, tiff)
             return .tiff
         } else if memcmp(buffer, ImageHeaderData.PNG, 8) == 0 { // image/png (png)
             return .png
@@ -82,6 +83,193 @@ extension Data {
         }
     }
     
+    var imageSize: CGSize {
+        
+        let type = self.imageFormat
+        
+        if type == .png {
+            var buffer = [UInt8](repeating: 0, count: 8)
+            copyBytes(to: &buffer, from: Range(16...23))
+            return pngImageSize(withData: buffer.data)
+        } else if type == .gif {
+            var buffer = [UInt8](repeating: 0, count: 4)
+            copyBytes(to: &buffer, from: Range(6...9))
+            return gifImageSize(withData: buffer.data)
+        } else if type == .bmp {
+            var buffer = [UInt8](repeating: 0, count: 8)
+            copyBytes(to: &buffer, from: Range(18...25))
+            return bmpImageSize(withData: buffer.data)
+        } else if type == .jpeg {
+            return jpgImageSize()
+        }
+        
+        return CGSize.zero
+    }
+    
+    
+    private enum JPEGHeaderSegment {
+        case next
+        case sof
+        case skip
+        case parse
+        case eoi
+    }
+    
+    private func jpgImageSize() -> CGSize {
+        let offset = 2
+        if count <= offset {
+            return .zero
+        }
+        return parseJPEGData(offset: 2, segment: .next)
+    }
+    
+    private func parseJPEGData(offset: Int, segment: JPEGHeaderSegment) -> CGSize {
+        
+        if count <= offset {
+            return .zero
+        }
+        
+        if segment == .eoi
+            || (count <= offset + 1)
+            || ((count <= offset + 2) && segment == .skip)
+            || ((count <= offset + 7) && segment == .parse) {
+            return .zero
+        }
+        
+        switch segment {
+        case .next:
+            let newOffset = offset + 1
+            var byte: UInt8 = 0x0
+            copyBytes(to: &byte, from: Range(newOffset...newOffset+1))
+            if byte == 0xff {
+                return parseJPEGData(offset: newOffset, segment: .sof)
+            } else {
+                return parseJPEGData(offset: newOffset, segment: .next)
+            }
+        case .sof:
+            let newOffset = offset + 1
+            var byte: UInt8 = 0x0
+            copyBytes(to: &byte, from: Range(newOffset...newOffset+1))
+            
+            if 0xEF >= byte && byte >= 0xE0 {
+                return parseJPEGData(offset: newOffset, segment: .skip)
+            } else if (0xC3 >= byte && byte >= 0xC0)
+                || (0xC7 >= byte && byte >= 0xC5)
+                || (0xCB >= byte && byte >= 0xC9)
+                || (0xCF >= byte && byte >= 0xCD) {
+                return parseJPEGData(offset: newOffset, segment: .parse)
+            } else if byte == 0xFF {
+                return parseJPEGData(offset: newOffset, segment: .sof)
+            } else if byte == 0xD9 {
+                return parseJPEGData(offset: newOffset, segment: .eoi)
+            } else {
+                return parseJPEGData(offset: newOffset, segment: .skip)
+            }
+            
+        case .skip:
+            var length: UInt8 = 0x0
+            copyBytes(to: &length, from: Range(offset+1...offset+3))
+            let newOffset: Int = offset + Int(length) - 1
+            return parseJPEGData(offset: newOffset, segment: .next)
+            
+        case .parse:
+            let startoffset = offset + 4
+            var h1: UInt8 = 0, h2: UInt8 = 0
+            copyBytes(to: &h1, from: Range(startoffset+2...startoffset+3))
+            copyBytes(to: &h2, from: Range(startoffset+3...startoffset+4))
+            
+            let height: CGFloat = CGFloat(Int(h1) << 8 + Int(h2))
+            
+            var w1: UInt8 = 0, w2: UInt8 = 0
+            copyBytes(to: &w1, from: Range(startoffset...startoffset+1))
+            copyBytes(to: &w2, from: Range(startoffset+1...startoffset+2))
+            let width: CGFloat = CGFloat(Int(w1) << 8 + Int(w2))
+            
+            return CGSize(width: width, height: height)
+            
+        default:
+            return .zero
+        }
+        
+    }
+    
+    private func bmpImageSize(withData data: Data) -> CGSize {
+        
+        if data.count != 8 {
+            return .zero
+        }
+        
+        var w1: UInt8 = 0, w2: UInt8 = 0, w3: UInt8 = 0, w4: UInt8 = 0
+        data.copyBytes(to: &w1, from: Range(0...1))
+        data.copyBytes(to: &w2, from: Range(1...2))
+        data.copyBytes(to: &w3, from: Range(2...3))
+        data.copyBytes(to: &w4, from: Range(3...4))
+        
+        let width: CGFloat = CGFloat( Int(w1) + Int(w2) << 8 + Int(w3) << 16 + Int(w4) << 24 )
+        
+        var h1: UInt8 = 0, h2: UInt8 = 0, h3: UInt8 = 0, h4: UInt8 = 0
+        data.copyBytes(to: &h1, from: Range(4...5))
+        data.copyBytes(to: &h2, from: Range(5...6))
+        data.copyBytes(to: &h3, from: Range(6...7))
+        data.copyBytes(to: &h4, from: Range(7...8))
+        
+        let height: CGFloat = CGFloat( Int(h1) + Int(h2) << 8 + Int(h3) << 16 + Int(h4) << 24 )
+        
+        return CGSize(width: width, height: height)
+    }
+    
+    private func gifImageSize(withData data: Data) -> CGSize {
+        
+        if data.count != 4 {
+            return .zero
+        }
+        
+        var w1: UInt8 = 0, w2: UInt8 = 0
+        data.copyBytes(to: &w1, from: Range(0...1))
+        data.copyBytes(to: &w2, from: Range(1...2))
+        
+        let width: CGFloat = CGFloat(Int(w1) + Int(w2) << 8)
+        
+        var h1: UInt8 = 0, h2: UInt8 = 0
+        data.copyBytes(to: &h1, from: Range(2...3))
+        data.copyBytes(to: &h2, from: Range(3...4))
+        
+        let height: CGFloat = CGFloat(Int(h1) + Int(h2) << 8)
+        
+        return CGSize(width: width, height: height)
+    }
+    
+    private func pngImageSize(withData data: Data) -> CGSize {
+        
+        if data.count != 8 {
+            return .zero
+        }
+        
+        var w1: UInt8 = 0, w2: UInt8 = 0, w3: UInt8 = 0, w4: UInt8 = 0
+        data.copyBytes(to: &w1, from: Range(0...1))
+        data.copyBytes(to: &w2, from: Range(1...2))
+        data.copyBytes(to: &w3, from: Range(2...3))
+        data.copyBytes(to: &w4, from: Range(3...4))
+        
+        let width: CGFloat = CGFloat( Int(w1) << 24 + Int(w2) << 16 + Int(w3) << 8 + Int(w4) )
+        
+        var h1: UInt8 = 0, h2: UInt8 = 0, h3: UInt8 = 0, h4: UInt8 = 0
+        data.copyBytes(to: &h1, from: Range(4...5))
+        data.copyBytes(to: &h2, from: Range(5...6))
+        data.copyBytes(to: &h3, from: Range(6...7))
+        data.copyBytes(to: &h4, from: Range(7...8))
+        
+        let height: CGFloat = CGFloat( Int(h1) << 24 + Int(h2) << 16 + Int(h3) << 8 + Int(h4) )
+        
+        return CGSize(width: width, height: height)
+    }
+    
+}
+
+extension Array where Element == UInt8 {
+    var data : Data{
+        return Data(bytes:(self))
+    }
 }
 
 class ViewController: UIViewController {
@@ -102,9 +290,10 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         
-        readImageMetadate()
-        writeImageMetadate()
-        imageFormatTest()
+        //readImageMetadate()
+        //writeImageMetadate()
+        //imageFormatTest()
+        imageSizeTest()
     }
     
     func readImageMetadate() {
@@ -170,16 +359,16 @@ class ViewController: UIViewController {
                                 // self.saveImage(with: newImageData as Data)
                                 
                                 // 写入后查看元数据,真机测试(模拟器沙盒貌似不保留)
-                                // 真机开了iTunes共享,把沙盒文件复制到电脑,k打开后查看元数据已经被更改
+                                // 真机开了iTunes共享,把沙盒文件复制到电脑,打开后查看元数据已经被更改
                                 let path = NSHomeDirectory()
                                 let imagePath = path + "/Documents/newImage.png"
                                 print(imagePath)
                                 /* 写入方法1
-                                let fp = fopen(imagePath, "w+")
-                                let uint8 = [UInt8](newImageData as Data)
-                                fwrite(newImageData.bytes, uint8.count, 1, fp)
-                                fclose(fp)
-                                */
+                                 let fp = fopen(imagePath, "w+")
+                                 let uint8 = [UInt8](newImageData as Data)
+                                 fwrite(newImageData.bytes, uint8.count, 1, fp)
+                                 fclose(fp)
+                                 */
                                 
                                 // 写入方法2
                                 newImageData.write(toFile: imagePath, atomically: true)
@@ -213,6 +402,17 @@ class ViewController: UIViewController {
             if let filePath = Bundle.main.path(forResource: "test", ofType: item),
                 let imgData = try? Data(contentsOf: URL(fileURLWithPath: filePath)) {
                 print(imgData.imageFormat)
+            }
+        }
+        
+    }
+    
+    func imageSizeTest() {
+        
+        for item in ["png", "gif", "bmp", "jpg"] {
+            if let filePath = Bundle.main.path(forResource: "test", ofType: item),
+                let imgData = try? Data(contentsOf: URL(fileURLWithPath: filePath)) {
+                print(imgData.imageSize)
             }
         }
         
