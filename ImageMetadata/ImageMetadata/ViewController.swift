@@ -418,6 +418,10 @@ class ViewController: UIViewController {
         
     }
     
+    func saveToBMP() {
+        
+    }
+    
 }
 
 
