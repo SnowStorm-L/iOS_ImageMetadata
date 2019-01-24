@@ -419,7 +419,9 @@ class ViewController: UIViewController {
     }
     
     func saveToBMP() {
-        
+        let fileManager = FileManager.default
+        let cachePath = "\(NSHomeDirectory())/Documents/text.bmp"
+        fileManager.createFile(atPath: cachePath, contents: nil, attributes: nil)
     }
     
 }
