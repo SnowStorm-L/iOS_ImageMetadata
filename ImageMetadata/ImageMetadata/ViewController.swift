@@ -418,10 +418,16 @@ class ViewController: UIViewController {
         
     }
     
-    func saveToBMP() {
+    func saveToBMP(withImage image: UIImage) {
+        guard let cgImage = image.cgImage else { return }
+        let width = cgImage.width
+        let height = cgImage.height
         let fileManager = FileManager.default
         let cachePath = "\(NSHomeDirectory())/Documents/text.bmp"
         fileManager.createFile(atPath: cachePath, contents: nil, attributes: nil)
+        guard let fileHandle = FileHandle(forUpdatingAtPath: cachePath) else { return }
+       
+        
     }
     
 }
