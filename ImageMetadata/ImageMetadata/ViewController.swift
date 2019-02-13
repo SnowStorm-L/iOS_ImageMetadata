@@ -293,7 +293,8 @@ class ViewController: UIViewController {
         //readImageMetadate()
         //writeImageMetadate()
         //imageFormatTest()
-        imageSizeTest()
+        //imageSizeTest()
+        saveToBMP(withImage: UIImage(named: "location"))
     }
     
     func readImageMetadate() {
@@ -418,16 +419,203 @@ class ViewController: UIViewController {
         
     }
     
-    func saveToBMP(withImage image: UIImage) {
+    func saveToBMP(withImage image: UIImage?) {
+        guard let image = image else { return }
         guard let cgImage = image.cgImage else { return }
-        let width = cgImage.width
-        let height = cgImage.height
+        let width = cgImage.width // 293
+        let height = cgImage.height // 190
         let fileManager = FileManager.default
-        let cachePath = "\(NSHomeDirectory())/Documents/text.bmp"
+        let cachePath = "\(NSHomeDirectory())/Documents/32.bmp"
+        print(cachePath)
         fileManager.createFile(atPath: cachePath, contents: nil, attributes: nil)
         guard let fileHandle = FileHandle(forUpdatingAtPath: cachePath) else { return }
-       
         
+        // BPP（Bits Per Pixel）为每像素的比特数
+        let bitsPerPixel = 32 // 32位位图
+        let bitsPerComponent = 8
+        
+        let bytesPerPixel = bitsPerPixel / bitsPerComponent // 4
+    
+        let bytesPerRow = width * bytesPerPixel; // 1172
+        let bufferLength = bytesPerRow * height; // 222680
+        // 第一部分, 头信息, 一共14Byte
+        /*
+         typedef struct tagBITMAPFILEHEADER
+         {
+         UINT16 bfType;
+         DWORD bfSize;
+         UINT16 bfReserved1;
+         UINT16 bfReserved2;
+         DWORD bfOffBits;
+         } BITMAPFILEHEADER;
+         */
+        
+        // 文件类型
+        // 占2bytes
+        let bfTypeData = Data(bytes: [0x42, 0x4d])
+        fileHandle.write(bfTypeData)
+        
+        // 位图文件大小
+        // 占4bytes
+        // 例子: 222736 字节, 16进制 36610, 4bytes 补满 00 03 66 10
+        let bfSizeData = Data(bytes: [0x10, 0x66, 0x03, 0])
+        fileHandle.write(bfSizeData)
+        
+        // 保留位 2bytes
+        let bfReserved1Data = Data(bytes: [0, 0])
+        fileHandle.write(bfReserved1Data)
+        
+        // 保留位 2bytes
+        let bfReserved2Data = Data(bytes: [0, 0])
+        fileHandle.write(bfReserved2Data)
+        
+        // 从头文件开始到实际图像数据之间的偏移量
+        // (第一部分, 头信息, 一共14Byte + 第二部分, 位图信息头 40Byte + 第三部分, 调色板 0Byte) 一共54
+        // 占4bytes
+        let bfOffbitsData = Data(bytes: [0x36, 0, 0, 0])
+        fileHandle.write(bfOffbitsData)
+        
+        // 第二部分, 位图信息头 一共40Byte
+        
+        // BITMAPINFOHEADER 结构所需要的字节数
+        // 占4个bytes
+        let biSizeData = Data(bytes: [0x28, 0, 0, 0])
+        fileHandle.write(biSizeData)
+        
+        // 以下2个数可以通过width, height 算出来(现在偷懒一下,直接拿demo图的参数去填了)
+        
+        // 说明图像的宽度,以像素为单位 占4个bytes
+        let biWidthData = Data(bytes: [0x25, 0x01, 0, 0]) // 293
+        fileHandle.write(biWidthData)
+        
+        // 说明图像的高度,以像素为单位 占4个bytes
+        // 正数,说明图像是倒向的,负数反之
+        // 大多数bmp文件都是x倒向位图,也就是高度值是个正数
+        let biHeight = Data(bytes: [0xbe, 0, 0, 0]) // 190
+        fileHandle.write(biHeight)
+        
+        // 为设备说明颜色平面数,一般都是1
+        // 占2个bytes
+        let biPlanesData = Data(bytes: [0x01, 0])
+        fileHandle.write(biPlanesData)
+        
+        // 说明比特数/像素,其值为1,4,8,16,24或32
+        /*
+         biBitCount字段值确定每个像素所需要的位数，biBitCount字段的取值与biCompression所指定的压缩方法相关。
+         比如，如果每个像素由没有经过压缩，每个八位的RGBA组成，那biBitCount值为32，
+         如果每个像素由经过压缩的RGB555组成，那biBitCount值为15,
+         甚至，如果你的压缩方式只取5位的R，那biBitCount就是5。
+         
+         当biBitCount=1时，8个像素占1个字节；
+         当biBitCount=4时，2个像素占1个字节；
+         当biBitCount=8时，1个像素占1个字节；
+         当biBitCount=24时,1个像素占3个字节；
+         也就是说,一个像素所占的字节数是biBitCount/8。(RGBA)
+         */
+        // 占2个bytes
+        let biBitCountData = Data(bytes: [0x20, 0]) // 32
+        fileHandle.write(biBitCountData)
+        
+        // 说明图像数据压缩类型
+        /*
+         0 BI_RGB 不压缩(最常用)
+         1 BI_RLE8 8比特游程编码(RLE), 只用于8位位图
+         2 BI_RLE4 4比特游程编码(RLE), 只用于4位位图
+         3 BI_BITFIELDS 比特域,用于16/32位位图
+         4 BI_JPEG JPEG 位图含JPEG图像(仅用于打印机)
+         5 BI_PNG PNG 位图含PNG图像(仅用于打印机)
+         */
+        // 占4个bytes
+        let biCompressionData = Data(bytes: [0, 0, 0, 0])
+        fileHandle.write(biCompressionData)
+        
+        // 说明图像的大小
+        // 以字节为单位. 当用BI_RGB格式时,可设置为0
+        // 占4个bytes
+        let biSizeImageData = Data(bytes: [0, 0, 0, 0])
+        fileHandle.write(biSizeImageData)
+        
+        // https://blog.csdn.net/blues1021/article/details/44827449
+        /*
+         Its not very important.
+         You can leave them on 2835 its not going to ruin the image. (72 DPI × 39.3701 inches per meter yields 2834.6472) 一寸等于2.54cm.
+         */
+        // 指定位图的目标设备的水平打印分辨率（以每米像素为单位) ,有符号整数
+        // 占4个bytes
+        let biXPelsPerMeterData = Data(bytes: [0x12, 0x0B, 0, 0])
+        fileHandle.write(biXPelsPerMeterData)
+        
+        // 垂直分辨率
+        // 占4个bytes
+        let biYPelsPerMeter = Data(bytes: [0x12, 0x0B, 0, 0])
+        fileHandle.write(biYPelsPerMeter)
+        
+        // 说明位图实际使用的彩色表中的颜色索引数
+        // 设为0的话,则说明使用所有调色板项
+        // 占4个bytes
+        let biClrUsedData = Data(bytes: [0, 0, 0, 0])
+        fileHandle.write(biClrUsedData)
+        
+        // 说明对图像显示有影响的颜色索引的数目
+        // 如果是0,表示都重要
+        // 占4个bytes
+        let biClrImportantData = Data(bytes: [0, 0, 0, 0])
+        fileHandle.write(biClrImportantData)
+        
+        // 第三部分, 调色板
+        // 多少bytes 由颜色索引决定
+        
+        // 第四部分, 位图数据
+        // 多少bytes 由图像尺寸决定
+        
+        var bmpData = [UInt8].init(repeating: 0, count: bufferLength)
+        
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        
+        guard let context = CGContext(data: &bmpData, width: width, height: height, bitsPerComponent: bitsPerComponent, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+            return
+        }
+        
+        let rect = CGRect(x: 0, y: 0, width: width, height: height)
+        
+        context.draw(cgImage, in: rect)
+        
+        guard let contextDataRaw = context.data else { return }
+    
+        // 有点bug, 这里取的数据和ObjC方法写的对不上
+        let contextData = contextDataRaw.bindMemory(to: UInt8.self, capacity: bufferLength)
+        
+        var column = height
+
+        var counter = 0
+        
+        for y in 0..<height {
+            var byteIndex = 0
+            column = column - 1
+            for x in 0..<width {
+                let point = CGPoint(x: x, y: y)
+                let offset = 4 * (width*Int(round(point.y)) + Int(round(point.x)))
+                let blue = contextData[offset]
+                let green = contextData[offset+1]
+                let red = contextData[offset+2]
+                let alpha = contextData[offset+3]
+                let index = column * bytesPerRow + byteIndex
+                //print("counter:\(counter) column:\(column) byteIndex:\(byteIndex)")
+                //print("x:\(x) y:\(y) r:\(red) g:\(green) b:\(blue) a:\(alpha)")
+                counter = counter + 1
+                bmpData[index] = red
+                bmpData[index + 1] = green
+                bmpData[index + 2] = blue
+                bmpData[index + 3] = alpha
+                byteIndex = byteIndex + 4
+            }
+        }
+        
+        let colorData = Data(bytes: bmpData, count: bmpData.count)
+        
+        fileHandle.write(colorData)
+        fileHandle.closeFile()
+        print("finish")
     }
     
 }
