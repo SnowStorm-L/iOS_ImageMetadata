@@ -294,7 +294,7 @@ class ViewController: UIViewController {
         //writeImageMetadate()
         //imageFormatTest()
         //imageSizeTest()
-        saveToBMP(withImage: UIImage(named: "location"))
+        //saveToBMP(withImage: UIImage(named: "location"))
     }
     
     func readImageMetadate() {
@@ -426,7 +426,7 @@ class ViewController: UIViewController {
         let height = cgImage.height // 190
         let fileManager = FileManager.default
         let cachePath = "\(NSHomeDirectory())/Documents/32.bmp"
-        print(cachePath)
+        print("BMP save in PATH \(cachePath)")
         fileManager.createFile(atPath: cachePath, contents: nil, attributes: nil)
         guard let fileHandle = FileHandle(forUpdatingAtPath: cachePath) else { return }
         
@@ -537,7 +537,7 @@ class ViewController: UIViewController {
         
         // https://blog.csdn.net/blues1021/article/details/44827449
         /*
-         Its not very important.
+         It`s not very important.
          You can leave them on 2835 its not going to ruin the image. (72 DPI × 39.3701 inches per meter yields 2834.6472) 一寸等于2.54cm.
          */
         // 指定位图的目标设备的水平打印分辨率（以每米像素为单位) ,有符号整数
@@ -568,11 +568,11 @@ class ViewController: UIViewController {
         // 第四部分, 位图数据
         // 多少bytes 由图像尺寸决定
         
-        var bmpData = [UInt8].init(repeating: 0, count: bufferLength)
+        let bmpData = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferLength)
         
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        
-        guard let context = CGContext(data: &bmpData, width: width, height: height, bitsPerComponent: bitsPerComponent, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+       
+        guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: bitsPerComponent, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
             return
         }
         
@@ -581,27 +581,42 @@ class ViewController: UIViewController {
         context.draw(cgImage, in: rect)
         
         guard let contextDataRaw = context.data else { return }
-    
-        // 有点bug, 这里取的数据和ObjC方法写的对不上
-        let contextData = contextDataRaw.bindMemory(to: UInt8.self, capacity: bufferLength)
         
+        /*
+         图象数据BGRA：默认的BMP是不支持ALPHA通道的
+         但对32位BMP而言，每个象素用32位(4个字节)表示，前三个字节表示RGB分量，最后一个字节可以做为ALPHA通道的值.
+         因此32位位图可以存储带ALPHA通道的图像，在文件中，各分量的存储顺序为BGRA，BGRA，BGRA，BGRA…
+         另外要注意的是，BMP图像的象素存储顺序是**从下到上**
+         */
+        
+        /*
+         BMP存储格式要求每行的字节数必须是4的倍数。
+         对于24位的位图，每个像素有3个字节。有如下公式：
+         补零的个数=width%4
+         int bytesPerRow = (width * 3 + width % 4);
+         byteIndex += 3
+         biBitCount 也要改成24
+         */
+
         var column = height
 
         var counter = 0
-        
+
         for y in 0..<height {
             var byteIndex = 0
             column = column - 1
             for x in 0..<width {
                 let point = CGPoint(x: x, y: y)
                 let offset = 4 * (width*Int(round(point.y)) + Int(round(point.x)))
-                let blue = contextData[offset]
-                let green = contextData[offset+1]
-                let red = contextData[offset+2]
-                let alpha = contextData[offset+3]
+                let blue = contextDataRaw.load(fromByteOffset: offset, as: UInt8.self)
+                let green = contextDataRaw.load(fromByteOffset: offset + 1, as: UInt8.self)
+                let red = contextDataRaw.load(fromByteOffset: offset + 2, as: UInt8.self)
+                let alpha = contextDataRaw.load(fromByteOffset: offset + 3, as: UInt8.self)
                 let index = column * bytesPerRow + byteIndex
-                //print("counter:\(counter) column:\(column) byteIndex:\(byteIndex)")
-                //print("x:\(x) y:\(y) r:\(red) g:\(green) b:\(blue) a:\(alpha)")
+                /*
+                 print("counter:\(counter) column:\(column) byteIndex:\(byteIndex)")
+                 print("x:\(x) y:\(y) r:\(red) g:\(green) b:\(blue) a:\(alpha)")
+                 */
                 counter = counter + 1
                 bmpData[index] = red
                 bmpData[index + 1] = green
@@ -611,8 +626,7 @@ class ViewController: UIViewController {
             }
         }
         
-        let colorData = Data(bytes: bmpData, count: bmpData.count)
-        
+        let colorData = Data(bytes: bmpData, count: bufferLength)
         fileHandle.write(colorData)
         fileHandle.closeFile()
         print("finish")
