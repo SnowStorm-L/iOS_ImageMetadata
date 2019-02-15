@@ -430,6 +430,11 @@ class ViewController: UIViewController {
         fileManager.createFile(atPath: cachePath, contents: nil, attributes: nil)
         guard let fileHandle = FileHandle(forUpdatingAtPath: cachePath) else { return }
         
+        /*
+          24位bmp
+          修改带 (// **) 注释的地方
+         */
+        
         // BPP（Bits Per Pixel）为每像素的比特数
         let bitsPerPixel = 32 // 32位位图
         let bitsPerComponent = 8
@@ -513,7 +518,7 @@ class ViewController: UIViewController {
          也就是说,一个像素所占的字节数是biBitCount/8。(RGBA)
          */
         // 占2个bytes
-        let biBitCountData = Data(bytes: [0x20, 0]) // 32
+        let biBitCountData = Data(bytes: [0x20, 0]) // 32  // ** 24bmp 0x18
         fileHandle.write(biBitCountData)
         
         // 说明图像数据压缩类型
@@ -568,6 +573,7 @@ class ViewController: UIViewController {
         // 第四部分, 位图数据
         // 多少bytes 由图像尺寸决定
         
+        // ** 24bmp bufferLength = height * (width * 3 + width % 4)
         let bmpData = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferLength)
         
         let colorSpace = CGColorSpaceCreateDeviceRGB()
@@ -594,8 +600,6 @@ class ViewController: UIViewController {
          对于24位的位图，每个像素有3个字节。有如下公式：
          补零的个数=width%4
          int bytesPerRow = (width * 3 + width % 4);
-         byteIndex += 3
-         biBitCount 也要改成24
          */
 
         var column = height
@@ -611,8 +615,8 @@ class ViewController: UIViewController {
                 let blue = contextDataRaw.load(fromByteOffset: offset, as: UInt8.self)
                 let green = contextDataRaw.load(fromByteOffset: offset + 1, as: UInt8.self)
                 let red = contextDataRaw.load(fromByteOffset: offset + 2, as: UInt8.self)
-                let alpha = contextDataRaw.load(fromByteOffset: offset + 3, as: UInt8.self)
-                let index = column * bytesPerRow + byteIndex
+                let alpha = contextDataRaw.load(fromByteOffset: offset + 3, as: UInt8.self) // ** 24bmp 没alpha
+                let index = column * bytesPerRow + byteIndex // ** 24bmp bytesPerRow = (width * 3 + width % 4);
                 /*
                  print("counter:\(counter) column:\(column) byteIndex:\(byteIndex)")
                  print("x:\(x) y:\(y) r:\(red) g:\(green) b:\(blue) a:\(alpha)")
@@ -621,8 +625,8 @@ class ViewController: UIViewController {
                 bmpData[index] = red
                 bmpData[index + 1] = green
                 bmpData[index + 2] = blue
-                bmpData[index + 3] = alpha
-                byteIndex = byteIndex + 4
+                bmpData[index + 3] = alpha // ** 24bmp 没alpha
+                byteIndex = byteIndex + 4 // ** 24bmp byteIndex += 3
             }
         }
         
