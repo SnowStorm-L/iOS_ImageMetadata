@@ -205,7 +205,9 @@ extension Data {
         data.copyBytes(to: &w3, from: Range(2...3))
         data.copyBytes(to: &w4, from: Range(3...4))
         
-        let width: CGFloat = CGFloat( Int(w1) + Int(w2) << 8 + Int(w3) << 16 + Int(w4) << 24 )
+        let widthValue = w1 + w2 << 8 + w3 << 16 + w4 << 24
+        
+        let width = CGFloat(widthValue)
         
         var h1: UInt8 = 0, h2: UInt8 = 0, h3: UInt8 = 0, h4: UInt8 = 0
         data.copyBytes(to: &h1, from: Range(4...5))
@@ -213,7 +215,9 @@ extension Data {
         data.copyBytes(to: &h3, from: Range(6...7))
         data.copyBytes(to: &h4, from: Range(7...8))
         
-        let height: CGFloat = CGFloat( Int(h1) + Int(h2) << 8 + Int(h3) << 16 + Int(h4) << 24 )
+        let heightValue = h1 + h2 << 8 + h3 << 16 + h4 << 24
+        
+        let height = CGFloat(heightValue)
         
         return CGSize(width: width, height: height)
     }
@@ -251,7 +255,9 @@ extension Data {
         data.copyBytes(to: &w3, from: Range(2...3))
         data.copyBytes(to: &w4, from: Range(3...4))
         
-        let width: CGFloat = CGFloat( Int(w1) << 24 + Int(w2) << 16 + Int(w3) << 8 + Int(w4) )
+        let widthValue = w1 << 24 + w2 << 16 + w3 << 8 + w4
+        
+        let width = CGFloat(widthValue)
         
         var h1: UInt8 = 0, h2: UInt8 = 0, h3: UInt8 = 0, h4: UInt8 = 0
         data.copyBytes(to: &h1, from: Range(4...5))
@@ -259,7 +265,8 @@ extension Data {
         data.copyBytes(to: &h3, from: Range(6...7))
         data.copyBytes(to: &h4, from: Range(7...8))
         
-        let height: CGFloat = CGFloat( Int(h1) << 24 + Int(h2) << 16 + Int(h3) << 8 + Int(h4) )
+        let heightValue = h1 << 24 + h2 << 16 + h3 << 8 + h4
+        let height = CGFloat(heightValue)
         
         return CGSize(width: width, height: height)
     }
@@ -310,10 +317,17 @@ class ViewController: UIViewController {
                     // print(imageInfo["{Exif}"] ?? "")
                 }
             }
+            /*
+             func setAttributes(_ attributes: [FileAttributeKey : Any], ofItemAtPath path: String) throws
+             */
+            if let fileInfo = try? FileManager.default.attributesOfItem(atPath: fileUrl.relativePath) {
+                print(fileInfo)
+            }
             
         }
         
         // PHAsset 获取图片信息
+        /*
         let options = PHContentEditingInputRequestOptions()
         options.isNetworkAccessAllowed = true //download asset metadata from iCloud if needed
         PHAsset().requestContentEditingInput(with: options) { (contentEditingInput, info) in
@@ -322,7 +336,7 @@ class ViewController: UIViewController {
                     print(fullImage.properties)
                 }
             }
-        }
+        }*/
         
         // UIImagePickerController 获取
         
