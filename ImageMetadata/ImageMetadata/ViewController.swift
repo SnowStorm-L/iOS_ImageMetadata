@@ -328,15 +328,15 @@ class ViewController: UIViewController {
         
         // PHAsset 获取图片信息
         /*
-        let options = PHContentEditingInputRequestOptions()
-        options.isNetworkAccessAllowed = true //download asset metadata from iCloud if needed
-        PHAsset().requestContentEditingInput(with: options) { (contentEditingInput, info) in
-            if let fullSizeImageURL = contentEditingInput?.fullSizeImageURL {
-                if let fullImage = CIImage(contentsOf: fullSizeImageURL) {
-                    print(fullImage.properties)
-                }
-            }
-        }*/
+         let options = PHContentEditingInputRequestOptions()
+         options.isNetworkAccessAllowed = true //download asset metadata from iCloud if needed
+         PHAsset().requestContentEditingInput(with: options) { (contentEditingInput, info) in
+         if let fullSizeImageURL = contentEditingInput?.fullSizeImageURL {
+         if let fullImage = CIImage(contentsOf: fullSizeImageURL) {
+         print(fullImage.properties)
+         }
+         }
+         }*/
         
         // UIImagePickerController 获取
         
@@ -445,8 +445,8 @@ class ViewController: UIViewController {
         guard let fileHandle = FileHandle(forUpdatingAtPath: cachePath) else { return }
         
         /*
-          24位bmp
-          修改带 (// **) 注释的地方
+         24位bmp
+         修改带 (// **) 注释的地方
          */
         
         // BPP（Bits Per Pixel）为每像素的比特数
@@ -454,7 +454,7 @@ class ViewController: UIViewController {
         let bitsPerComponent = 8
         
         let bytesPerPixel = bitsPerPixel / bitsPerComponent // 4
-    
+        
         let bytesPerRow = width * bytesPerPixel; // 1172
         let bufferLength = bytesPerRow * height; // 222680
         // 第一部分, 头信息, 一共14Byte
@@ -591,7 +591,7 @@ class ViewController: UIViewController {
         let bmpData = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferLength)
         
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-       
+        
         guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: bitsPerComponent, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
             return
         }
@@ -615,11 +615,11 @@ class ViewController: UIViewController {
          补零的个数=width%4
          int bytesPerRow = (width * 3 + width % 4);
          */
-
+        
         var column = height
-
+        
         var counter = 0
-
+        
         for y in 0..<height {
             var byteIndex = 0
             column = column - 1
@@ -665,29 +665,35 @@ extension ViewController {
         }
     }
     
-    // 元数据 拼接图片数据
-    func attach(metadata: [String: Any], toImageData imageData:Data) -> Data? {
-        // 这个方法,注意图片的类型 来调用不同的 函数 CGImage  jpg/png
-        guard
-            let imageDataProvider = CGDataProvider(data: imageData as CFData),
-            let cgImage = CGImage(pngDataProviderSource: imageDataProvider, decode: nil, shouldInterpolate: true, intent: .defaultIntent),
-            let newImageData = CFDataCreateMutable(nil, 0),
-            let type = UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, "image/png" as CFString, kUTTypeImage),
-            let destination = CGImageDestinationCreateWithData(newImageData, (type.takeRetainedValue()), 1, nil)
-            else {
-                return nil
+    func readAssetMetaData(asset: PHAsset) {
+        let options = PHContentEditingInputRequestOptions()
+        options.isNetworkAccessAllowed = true //download asset metadata from iCloud if needed
+        asset.requestContentEditingInput(with: options) { (contentEditingInput: PHContentEditingInput?, _) -> Void in
+            if let url = contentEditingInput?.fullSizeImageURL, let fullImage = CIImage(contentsOf: url) {
+                print(fullImage.properties)
+            }
         }
-        
-        CGImageDestinationAddImage(destination, cgImage, metadata as CFDictionary)
-        CGImageDestinationFinalize(destination)
-        
-        guard
-            let newProvider = CGDataProvider(data: newImageData),
-            let newCGImage =  CGImage(pngDataProviderSource: newProvider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
-            else {
-                return nil
+    }
+    
+    /* 重点注意
+     元数据的键值, 写入和读取
+     不要拿字符串去代替, 寻找内置定义的属性
+     例如 kCGImagePropertyExifDictionary (commond 点进去能找其它的键)
+     */
+    
+    // 写入元数据
+    func writeMetadata(_ metadata: Dictionary<AnyHashable, Any>, into imageData: Data) -> Data? {
+        let options = [kCGImageSourceShouldCache as String: kCFBooleanFalse] as CFDictionary
+        if let sourceData = CGImageSourceCreateWithData(imageData as CFData, options), let UTI = CGImageSourceGetType(sourceData) {
+            let newImageData = NSMutableData()
+            if let destination = CGImageDestinationCreateWithData(newImageData, UTI, 1, options) {
+                CGImageDestinationAddImageFromSource(destination, sourceData, 0, metadata as CFDictionary)
+                if CGImageDestinationFinalize(destination) {
+                    return newImageData as Data
+                }
+            }
         }
-        return UIImage(cgImage: newCGImage).pngData()
+        return nil
     }
     
     // 从图片数据, 获取元数据
